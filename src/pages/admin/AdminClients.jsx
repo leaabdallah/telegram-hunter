@@ -19,11 +19,54 @@ const AdminClients = () => {
   });
 
   const [editingId, setEditingId] = useState(null); // track which client is being edited
+  const [loading, setLoading] = useState(false);
 
   // Persist clients to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("adminClients", JSON.stringify(clients));
   }, [clients]);
+
+  // --- NEW: load from backend /api/clients_config ---
+  const loadClientsFromAPI = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${FLASK_API_BASE_URL}/api/clients_config`, {
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to load clients");
+      }
+
+      const list = Array.isArray(data.clients) ? data.clients : [];
+      // Map backend fields to your UI shape and assign IDs
+      const mapped = list.map((c, idx) => ({
+        id: idx + 1,
+        name: c.name || "",
+        email: c.notification_recipient || "",
+        mispEventTitle: c.misp_event_title || "",
+        mispEventTags: Array.isArray(c.misp_event_tags)
+          ? c.misp_event_tags.join(",")
+          : (c.misp_event_tags || ""),
+        // API key is redacted by backend; keep empty on UI
+        mispApiKey: "",
+      }));
+
+      setClients(mapped);
+      toast.success("Clients synced from server");
+    } catch (e) {
+      console.error(e);
+      toast.error(e.message || "Could not load clients from server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load once on mount
+  useEffect(() => {
+    loadClientsFromAPI();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const addClient = async () => {
     if (!newClient.name || !newClient.email) {
@@ -67,9 +110,10 @@ const AdminClients = () => {
         return;
       }
 
-      const id = clients.length > 0 ? clients[clients.length - 1].id + 1 : 1;
-      setClients([...clients, { id, ...newClient }]);
+      // Re-sync from server to reflect ground truth from config.json
+      await loadClientsFromAPI();
 
+      // Clear form
       setNewClient({
         name: "",
         email: "",
@@ -86,6 +130,7 @@ const AdminClients = () => {
   };
 
   const deleteClient = (id) => {
+    // Local-only delete (your backend has no DELETE route yet)
     setClients(clients.filter((c) => c.id !== id));
     toast.success("Client deleted!");
   };
@@ -113,7 +158,7 @@ const AdminClients = () => {
       mispEventTags: "",
       mispApiKey: "",
     });
-    toast.success("Client updated!");
+    toast.success("Client updated (local)!");
   };
 
   const cancelEdit = () => {
@@ -131,9 +176,19 @@ const AdminClients = () => {
     <div className="space-y-8">
       {/* Create/Edit Client */}
       <div className="bg-gray-800 rounded-xl p-6 shadow space-y-4">
-        <h2 className="text-xl font-semibold text-white">
-          {editingId ? "Edit Client" : "Create New Client"}
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-white">
+            {editingId ? "Edit Client" : "Create New Client"}
+          </h2>
+          <button
+            onClick={loadClientsFromAPI}
+            disabled={loading}
+            className="text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 px-3 py-1 rounded-lg"
+            style={{ backgroundColor: "transparent" }}
+          >
+            {loading ? "Syncing..." : "Sync from Server"}
+          </button>
+        </div>
 
         <input
           type="text"
