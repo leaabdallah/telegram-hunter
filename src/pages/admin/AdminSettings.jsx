@@ -9,12 +9,17 @@ export default function AdminSettings() {
     apiKey: "",
     debugMode: false,
     maxAlerts: 100,
+    apiBaseUrl: "http://127.0.0.1:5001", // <-- NEW: API base URL
   };
 
   const [form, setForm] = useState(() => {
     const saved = localStorage.getItem("adminSettings");
     return saved ? JSON.parse(saved) : defaultForm;
   });
+
+  const [apiStatus, setApiStatus] = useState(null); // holds /api/status result
+  const [logLines, setLogLines] = useState(50);
+  const [logs, setLogs] = useState([]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -25,7 +30,6 @@ export default function AdminSettings() {
   };
 
   const handleSave = () => {
-    // Simple validation: API key cannot be empty if debug mode is on
     if (!form.apiKey) {
       toast.error("API Key cannot be empty!");
       return;
@@ -42,11 +46,44 @@ export default function AdminSettings() {
     toast.success("Settings saved!");
   };
 
+  // --- API calls ---
+  const testBackend = async () => {
+    const url = `${form.apiBaseUrl}/api/status`;
+    try {
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to reach backend");
+      }
+      setApiStatus(data);
+      toast.success("Backend is reachable!");
+    } catch (err) {
+      setApiStatus(null);
+      toast.error(`Backend check failed: ${err.message}`);
+    }
+  };
+
+  const fetchLogs = async () => {
+    const url = `${form.apiBaseUrl}/api/logs?lines=${Number(logLines) || 50}`;
+    try {
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to fetch logs");
+      }
+      setLogs(Array.isArray(data.logs) ? data.logs : []);
+      toast.success("Logs fetched");
+    } catch (err) {
+      setLogs([]);
+      toast.error(`Could not fetch logs: ${err.message}`);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Admin Settings</h1>
 
-      {/* Email Notifications + Backup Frequency */}
+      {/* Notifications & Backup */}
       <section className="bg-slate-800 p-6 rounded-xl shadow">
         <h2 className="text-lg font-semibold mb-4">Notifications & Backup</h2>
         <div className="space-y-4">
@@ -92,7 +129,7 @@ export default function AdminSettings() {
         </div>
       </section>
 
-      {/* Advanced Settings */}
+      {/* Advanced */}
       <section className="bg-slate-800 p-6 rounded-xl shadow">
         <h2 className="text-lg font-semibold mb-4">Advanced Settings</h2>
         <div className="space-y-4">
@@ -107,6 +144,18 @@ export default function AdminSettings() {
               className="w-full p-2 rounded bg-slate-700 text-white"
             />
           </div>
+
+          <div>
+            <label className="block mb-1">Max Alerts</label>
+            <input
+              type="number"
+              name="maxAlerts"
+              value={form.maxAlerts}
+              onChange={handleChange}
+              className="w-full p-2 rounded bg-slate-700 text-white"
+            />
+          </div>
+
           <div>
             <label className="flex items-center gap-2">
               <input
@@ -119,17 +168,7 @@ export default function AdminSettings() {
               Enable Debug Mode
             </label>
           </div>
-          <div>
-            <label className="block mb-1">Max Alerts</label>
-            <input
-              type="number"
-              name="maxAlerts"
-              value={form.maxAlerts}
-              onChange={handleChange}
-              className="w-full p-2 rounded bg-slate-700 text-white"
-            />
-          </div>
-          {/* Debug Banner */}
+
           {form.debugMode && (
             <div className="mt-4 p-3 bg-red-600 text-white rounded font-bold">
               DEBUG MODE IS ACTIVE! Extra logging enabled.
@@ -138,23 +177,93 @@ export default function AdminSettings() {
         </div>
       </section>
 
-      <button
-        onClick={handleSave}
-        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg shadow"
-        style={{ backgroundColor: "transparent" }}
-      >
-        Save Settings
-      </button>
-      <button
-        onClick={() => {
-          setForm(defaultForm);
-          toast.success("Settings reset to default!");
-        }}
-        className="px-6 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg shadow"
-        style={{ backgroundColor: "transparent" }}
-      >
-        Reset to Default
-      </button>
+      {/* Backend Connectivity */}
+      <section className="bg-slate-800 p-6 rounded-xl shadow">
+        <h2 className="text-lg font-semibold mb-4">Backend Connectivity</h2>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block mb-1">API Base URL</label>
+            <input
+              type="text"
+              name="apiBaseUrl"
+              value={form.apiBaseUrl}
+              onChange={handleChange}
+              placeholder="http://127.0.0.1:5001"
+              className="w-full p-2 rounded bg-slate-700 text-white"
+            />
+            <p className="text-sm text-slate-400 mt-1">
+              Example: http://127.0.0.1:5001 (local) or http://YOUR_VM_IP:5001
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={testBackend}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow text-white"
+              style={{ backgroundColor: "transparent" }}
+            >
+              Test Backend
+            </button>
+
+            {apiStatus && (
+              <span className="text-emerald-300 text-sm">
+                ✅ {apiStatus?.status} | ts: {String(apiStatus?.timestamp)}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="block mb-1">Fetch last N log lines</label>
+            <input
+              type="number"
+              min={1}
+              max={200}
+              value={logLines}
+              onChange={(e) => setLogLines(e.target.value)}
+              className="w-24 p-2 rounded bg-slate-700 text-white"
+            />
+            <button
+              onClick={fetchLogs}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow text-white"
+              style={{ backgroundColor: "transparent" }}
+            >
+              Fetch Logs
+            </button>
+          </div>
+
+          {logs?.length > 0 && (
+            <div className="mt-3 max-h-64 overflow-auto bg-slate-900 rounded p-3 text-slate-200 text-sm">
+              {logs.map((line, idx) => (
+                <div key={idx}>{line}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <div className="flex gap-3">
+        <button
+          onClick={handleSave}
+          className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg shadow"
+          style={{ backgroundColor: "transparent" }}
+        >
+          Save Settings
+        </button>
+
+        <button
+          onClick={() => {
+            setForm(defaultForm);
+            setApiStatus(null);
+            setLogs([]);
+            toast.success("Settings reset to default!");
+          }}
+          className="px-6 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg shadow"
+          style={{ backgroundColor: "transparent" }}
+        >
+          Reset to Default
+        </button>
+      </div>
     </div>
   );
 }
