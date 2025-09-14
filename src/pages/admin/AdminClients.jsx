@@ -190,19 +190,13 @@ const addClient = async () => {
     // Email validation
     if (!isValidEmail(newClient.email)) {
       toast.error("Invalid email format!");
-    if (!newClient.name || !newClient.email) {
-      toast.error("Name and Email are required");
-      return;
-    }
 
     setClients(
-      clients.map((c) => (c.id === editingId ? { id: c.id, ...newClient } : c))
       clients.map((c) =>
         c.id === editingId ? { id: c.id, ...newClient } : c
       )
     );
     setEditingId(null);
-    setNewClient({ name: "", email: "", mispEventTitle: "", mispApiKey: "" });
 
     // Reset form
     setNewClient({
