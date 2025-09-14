@@ -18,13 +18,35 @@ const AdminClients = () => {
     mispApiKey: "",
   });
 
+  const isValidEmail = (email) => {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+  };
+
+
   const [editingId, setEditingId] = useState(null); // track which client is being edited
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Persist clients to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("adminClients", JSON.stringify(clients));
   }, [clients]);
+
+  const addClient = () => {
+    // Check for empty fields
+    if (
+      !newClient.name ||
+      !newClient.email ||
+      !newClient.mispEventTitle ||
+      !newClient.mispApiKey
+    ) {
+      toast.error("All fields are required!");
+const addClient = async () => {
+  if (!newClient.name || !newClient.email) {
+    toast.error("Name and Email are required");
+    return;
+  }
 
   // --- NEW: load from backend /api/clients_config ---
   const loadClientsFromAPI = async () => {
@@ -73,11 +95,17 @@ const AdminClients = () => {
       toast.error("Name and Email are required");
       return;
     }
+    
+    // Validate email
+    if (!isValidEmail(newClient.email)) {
+      toast.error("Invalid email format!");
+
     if (!newClient.mispEventTitle || !newClient.mispApiKey) {
       toast.error("MISP Event Title and API Key are required");
       return;
     }
 
+    const id = clients.length + 1;
     const payload = {
       name: newClient.name,
       notification_recipient: newClient.email,
@@ -110,8 +138,13 @@ const AdminClients = () => {
         return;
       }
 
+      const id = clients.length > 0 ? clients[clients.length - 1].id + 1 : 1;
+
       // Re-sync from server to reflect ground truth from config.json
       await loadClientsFromAPI();
+
+      setClients([...clients, { id, ...newClient }]);
+    setNewClient({ name: "", email: "", mispEvent: "", apiKey: "" });
 
       // Clear form
       setNewClient({
@@ -121,7 +154,8 @@ const AdminClients = () => {
         mispEventTags: "",
         mispApiKey: "",
       });
-
+      
+    toast.success("Client created successfully!");
       toast.success(data?.message || "Client added!");
     } catch (err) {
       console.error(err);
@@ -141,16 +175,36 @@ const AdminClients = () => {
   };
 
   const saveEdit = () => {
+    // Empty field check
+    if (
+      !newClient.name ||
+      !newClient.email ||
+      !newClient.mispEventTitle ||
+      !newClient.mispEventTags ||
+      !newClient.mispApiKey
+    ) {
+      toast.error("All fields are required!");
+      return;
+    }
+
+    // Email validation
+    if (!isValidEmail(newClient.email)) {
+      toast.error("Invalid email format!");
     if (!newClient.name || !newClient.email) {
       toast.error("Name and Email are required");
       return;
     }
+
     setClients(
+      clients.map((c) => (c.id === editingId ? { id: c.id, ...newClient } : c))
       clients.map((c) =>
         c.id === editingId ? { id: c.id, ...newClient } : c
       )
     );
     setEditingId(null);
+    setNewClient({ name: "", email: "", mispEventTitle: "", mispApiKey: "" });
+
+    // Reset form
     setNewClient({
       name: "",
       email: "",
@@ -163,6 +217,7 @@ const AdminClients = () => {
 
   const cancelEdit = () => {
     setEditingId(null);
+    setNewClient({ name: "", email: "", mispEventTitle: "", mispApiKey: "" });
     setNewClient({
       name: "",
       email: "",
@@ -171,6 +226,12 @@ const AdminClients = () => {
       mispApiKey: "",
     });
   };
+
+  const filteredClients = clients.filter(
+    (client) =>
+      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-8">
@@ -261,6 +322,17 @@ const AdminClients = () => {
         </div>
       </div>
 
+      {/* Search input */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search clients..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600"
+        />
+      </div>
+
       {/* Client List */}
       <div className="bg-gray-800 rounded-xl p-6 shadow space-y-4">
         <h2 className="text-xl font-semibold text-white">Manage Clients</h2>
@@ -275,6 +347,13 @@ const AdminClients = () => {
             </tr>
           </thead>
           <tbody>
+            {filteredClients.map((client) => (
+              <tr key={client.id} className="border-b border-gray-700">
+                <td className="py-2">{client.id}</td>
+                <td>{client.name}</td>
+                <td>{client.email}</td>
+                <td>{client.mispEventTitle}</td>
+                <td>{client.mispApiKey}</td>
             {clients.map((c) => (
               <tr key={c.id} className="border-b border-gray-700">
                 <td className="py-2">{c.id}</td>
