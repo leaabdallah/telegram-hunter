@@ -1,167 +1,227 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 const AdminClients = () => {
-  const [clients, setClients] = useState([]);
+  // Load clients from localStorage initially
+  const [clients, setClients] = useState(() => {
+    const saved = localStorage.getItem("adminClients");
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [newClient, setNewClient] = useState({
     name: "",
     email: "",
     mispEventTitle: "",
+    mispEventTags: "",
     mispApiKey: "",
   });
-  const [editingClient, setEditingClient] = useState(null);
-  const [search, setSearch] = useState("");
+  const isValidEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+  };
 
+  const [editingId, setEditingId] = useState(null); // track which client is being edited
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Persist clients to localStorage whenever they change
   useEffect(() => {
-    // Load clients from localStorage
-    const storedClients = JSON.parse(localStorage.getItem("clients")) || [];
-    setClients(storedClients);
-  }, []);
+    localStorage.setItem("adminClients", JSON.stringify(clients));
+  }, [clients]);
 
-  const saveClients = (updatedClients) => {
-    setClients(updatedClients);
-    localStorage.setItem("clients", JSON.stringify(updatedClients));
-  };
-
-  const handleInputChange = (e) => {
-    setNewClient({ ...newClient, [e.target.name]: e.target.value });
-  };
-
-  const addClient = (e) => {
-    e.preventDefault();
+  const addClient = () => {
+    // Check for empty fields
     if (
-      !newClient.name.trim() ||
-      !newClient.email.trim() ||
-      !newClient.mispEventTitle.trim() ||
-      !newClient.mispApiKey.trim()
+      !newClient.name ||
+      !newClient.email ||
+      !newClient.mispEventTitle ||
+      !newClient.mispApiKey
     ) {
-      alert("All fields are required!");
+      toast.error("All fields are required!");
       return;
     }
 
-    if (editingClient) {
-      const updatedClients = clients.map((client) =>
-        client.id === editingClient.id ? { ...newClient, id: client.id } : client
-      );
-      saveClients(updatedClients);
-      setEditingClient(null);
-    } else {
-      const clientWithId = {
-        ...newClient,
-        id: Date.now(),
-      };
-      saveClients([...clients, clientWithId]);
+    // Validate email
+    if (!isValidEmail(newClient.email)) {
+      toast.error("Invalid email format!");
+      return;
     }
 
+    const id = clients.length + 1;
+    setClients([...clients, { id, ...newClient }]);
+    setNewClient({ name: "", email: "", mispEvent: "", apiKey: "" });
+
     // Reset form
-    setNewClient({ name: "", email: "", mispEventTitle: "", mispApiKey: "" });
+    setNewClient({
+      name: "",
+      email: "",
+      mispEventTitle: "",
+      mispEventTags: "",
+      mispApiKey: "",
+    });
+
+    toast.success("Client created successfully!");
   };
 
   const deleteClient = (id) => {
-    if (window.confirm("Are you sure you want to delete this client?")) {
-      const updatedClients = clients.filter((client) => client.id !== id);
-      saveClients(updatedClients);
-    }
+    setClients(clients.filter((c) => c.id !== id));
+    toast.success("Client deleted!");
   };
 
   const startEdit = (client) => {
-    setEditingClient(client);
-    setNewClient(client);
+    setEditingId(client.id);
+    setNewClient({ ...client });
+  };
+
+  const saveEdit = () => {
+    // Empty field check
+    if (
+      !newClient.name ||
+      !newClient.email ||
+      !newClient.mispEventTitle ||
+      !newClient.mispEventTags ||
+      !newClient.mispApiKey
+    ) {
+      toast.error("All fields are required!");
+      return;
+    }
+
+    // Email validation
+    if (!isValidEmail(newClient.email)) {
+      toast.error("Invalid email format!");
+      return;
+    }
+
+    setClients(
+      clients.map((c) => (c.id === editingId ? { id: c.id, ...newClient } : c))
+    );
+    setEditingId(null);
+    setNewClient({ name: "", email: "", mispEventTitle: "", mispApiKey: "" });
+
+    // Reset form
+    setNewClient({
+      name: "",
+      email: "",
+      mispEventTitle: "",
+      mispEventTags: "",
+      mispApiKey: "",
+    });
+
+    toast.success("Client updated!");
   };
 
   const cancelEdit = () => {
-    setEditingClient(null);
+    setEditingId(null);
     setNewClient({ name: "", email: "", mispEventTitle: "", mispApiKey: "" });
   };
 
   const filteredClients = clients.filter(
     (client) =>
-      client.name.toLowerCase().includes(search.toLowerCase()) ||
-      client.email.toLowerCase().includes(search.toLowerCase())
+      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold mb-4">Clients Management</h1>
-
-      {/* Add / Edit Form */}
-      <form
-        onSubmit={addClient}
-        className="bg-slate-800 p-6 rounded-xl shadow-lg space-y-4"
-      >
-        <h2 className="text-xl font-semibold mb-2">
-          {editingClient ? "Edit Client" : "Add New Client"}
+    <div className="space-y-8">
+      {/* Create/Edit Client */}
+      <div className="bg-gray-800 rounded-xl p-6 shadow space-y-4">
+        <h2 className="text-xl font-semibold text-white">
+          {editingId ? "Edit Client" : "Create New Client"}
         </h2>
+
         <input
           type="text"
-          name="name"
-          placeholder="Client Name"
+          placeholder="Name (unique identifier)"
           value={newClient.name}
-          onChange={handleInputChange}
-          className="w-full p-2 rounded bg-slate-700 text-white"
+          onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
         />
         <input
           type="email"
-          name="email"
-          placeholder="Client Email"
+          placeholder="Email"
           value={newClient.email}
-          onChange={handleInputChange}
-          className="w-full p-2 rounded bg-slate-700 text-white"
+          onChange={(e) =>
+            setNewClient({ ...newClient, email: e.target.value })
+          }
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
         />
         <input
           type="text"
-          name="mispEventTitle"
           placeholder="MISP Event Title"
           value={newClient.mispEventTitle}
-          onChange={handleInputChange}
-          className="w-full p-2 rounded bg-slate-700 text-white"
+          onChange={(e) =>
+            setNewClient({ ...newClient, mispEventTitle: e.target.value })
+          }
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
         />
         <input
           type="text"
-          name="mispApiKey"
+          placeholder="MISP Event Tags (comma-separated,eg.,tlp,client-tag)"
+          value={newClient.mispEventTags}
+          onChange={(e) =>
+            setNewClient({ ...newClient, mispEventTags: e.target.value })
+          }
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+        />
+        <input
+          type="text"
           placeholder="MISP API Key"
           value={newClient.mispApiKey}
-          onChange={handleInputChange}
-          className="w-full p-2 rounded bg-slate-700 text-white"
+          onChange={(e) =>
+            setNewClient({ ...newClient, mispApiKey: e.target.value })
+          }
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
         />
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            className="bg-green-500 hover:bg-green-600 px-4 py-2 rounded-lg text-white"
-          >
-            {editingClient ? "Update Client" : "Add Client"}
-          </button>
 
-          {editingClient && (
+        <div className="flex gap-2">
+          {editingId ? (
+            <>
+              <button
+                onClick={saveEdit}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 py-2 rounded-lg"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={cancelEdit}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 py-2 rounded-lg"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
             <button
-              type="button"
-              onClick={cancelEdit}
-              className="bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg text-white"
+              onClick={addClient}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 py-2 rounded-lg"
             >
-              Cancel
+              Add Client
             </button>
           )}
         </div>
-      </form>
+      </div>
 
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search clients..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full p-2 rounded bg-slate-700 text-white mb-4"
-      />
+      {/* Search input */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search clients..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full p-2 rounded bg-gray-700 text-white border border-gray-600"
+        />
+      </div>
 
-      {/* Clients Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse bg-slate-800 rounded-xl overflow-hidden">
-          <thead className="bg-slate-700 text-left">
-            <tr>
-              <th className="p-3">ID</th>
-              <th className="p-3">Name</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">MISP Event Title</th>
-              <th className="p-3 text-right">Actions</th>
+      {/* Client List */}
+      <div className="bg-gray-800 rounded-xl p-6 shadow space-y-4">
+        <h2 className="text-xl font-semibold text-white">Manage Clients</h2>
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="text-slate-400 border-b border-gray-600">
+              <th className="py-2">ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>MISP Event</th>
+              <th>MISP API Key</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -171,6 +231,7 @@ const AdminClients = () => {
                 <td>{client.name}</td>
                 <td>{client.email}</td>
                 <td>{client.mispEventTitle}</td>
+                <td>{client.mispApiKey}</td>
                 <td className="text-right flex gap-2 justify-end">
                   <button
                     onClick={() => startEdit(client)}
@@ -189,7 +250,6 @@ const AdminClients = () => {
                 </td>
               </tr>
             ))}
-
             {filteredClients.length === 0 && (
               <tr>
                 <td colSpan="5" className="text-center text-slate-400 py-4">
