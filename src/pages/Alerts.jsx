@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Select from "react-select";
-import { TrashIcon } from "@heroicons/react/24/solid";
+import TrashIcon from "../assets/trash.svg";
 
 const mockAlerts = [
   {
@@ -384,11 +384,7 @@ export default function AlertsPage() {
                     title="Delete Alert"
                     className="p-2 rounded hover:bg-red-100"
                   >
-                    <img
-                      src="/trash.svg.svg"
-                      alt="Delete"
-                      className="w-5 h-5"
-                    />{" "}
+                    <img src={TrashIcon} alt="Delete" className="w-5 h-5" />{" "}
                   </button>
                 </td>
               </tr>
@@ -397,7 +393,7 @@ export default function AlertsPage() {
         </table>
       </div>
       <div className="flex items-center gap-2 mt-4">
-        <button
+        <div
           onClick={() => setShowLegend(!showLegend)}
           className="px-2 py-1 text-xs rounded transition-colors"
           style={{
@@ -406,7 +402,7 @@ export default function AlertsPage() {
           }}
         >
           {showLegend ? "Hide Severity Legend" : "Show Severity Legend"}
-        </button>
+        </div>
 
         <div
           className={`overflow-hidden transition-all duration-500 ease-in-out ${

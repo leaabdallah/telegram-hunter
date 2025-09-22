@@ -5,25 +5,35 @@ import {
   Cog6ToothIcon,
   Bars3Icon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-
-const navItems = [
-  { name: "Dashboard", path: "/", icon: HomeIcon },
-  { name: "Alerts", path: "/alerts", icon: BellAlertIcon },
-  { name: "Leak Hunter", path: "/leak-hunter", icon: MagnifyingGlassIcon },
-  { name: "Settings", path: "/settings", icon: Cog6ToothIcon },
-];
 
 const handleLogout = () => {
   localStorage.removeItem("auth");
   window.location.href = "/login";
 };
 
+const navItems = [
+  { name: "Dashboard", path: "/dashboard", icon: HomeIcon },
+  { name: "Alerts", path: "/alerts", icon: BellAlertIcon },
+  { name: "Leak Hunter", path: "/leak-hunter", icon: MagnifyingGlassIcon },
+  { name: "Settings", path: "/settings", icon: Cog6ToothIcon },
+  { name: "Logout", action: handleLogout, icon: ArrowRightOnRectangleIcon },
+];
+
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem("userSidebarCollapsed");
+    return saved !== null ? JSON.parse(saved) : true; // default collapsed
+  });
+
+  // Save collapsed state
+  useEffect(() => {
+    localStorage.setItem("userSidebarCollapsed", JSON.stringify(collapsed));
+  }, [collapsed]);
 
   return (
     <aside
@@ -34,24 +44,40 @@ export default function Sidebar() {
       {/* Sidebar header */}
       <div className="flex items-center justify-between p-4">
         {!collapsed && <h1 className="text-lg font-bold">Threat Watch</h1>}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="hover:text-white"
-          style={{ backgroundColor: "transparent" }}
-        >
-          {collapsed ? (
-            <Bars3Icon className="w-6 h-6" />
-          ) : (
-            <XMarkIcon className="w-6 h-6" />
-          )}
-        </button>
+        {collapsed ? (
+          <Bars3Icon
+            className="w-6 h-6 cursor-pointer text-slate-300 hover:text-white transition"
+            onClick={() => setCollapsed(!collapsed)}
+          />
+        ) : (
+          <XMarkIcon
+            className="w-6 h-6 cursor-pointer text-slate-300 hover:text-white transition"
+            onClick={() => setCollapsed(!collapsed)}
+          />
+        )}
       </div>
 
       {/* Menu items */}
       <nav className="mt-4 flex flex-col" style={{ height: "100%" }}>
         <div>
-          {navItems.map(({ name, path, icon: Icon }) => {
+          {navItems.map(({ name, path, icon: Icon, action }) => {
             const isActive = location.pathname === path;
+
+            // Render Logout as a button
+            if (action) {
+              return (
+                <button
+                  key={name}
+                  onClick={action}
+                  className="flex items-center space-x-3 w-full text-left px-4 py-3 !bg-slate-800 text-white rounded hover:bg-red-600 shadow-md transition transform hover:scale-105 mt-1"
+                >
+                  {Icon && <Icon className="w-5 h-5" />}
+                  {!collapsed && <span className="text-sm">{name}</span>}
+                </button>
+              );
+            }
+
+            // Default link items
             return (
               <Link
                 key={name}
@@ -65,16 +91,6 @@ export default function Sidebar() {
               </Link>
             );
           })}
-
-          {/* Logout button directly after menu items */}
-          {!collapsed && (
-            <button
-              onClick={handleLogout}
-              className="mt-4 w-full bg-blue-1000 text-black px-4 py-2 rounded shadow hover:bg-blue-300"
-            >
-              Logout
-            </button>
-          )}
         </div>
       </nav>
     </aside>

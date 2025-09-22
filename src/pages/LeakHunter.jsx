@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import { toast } from 'sonner';
+import React, { useState } from "react";
+import { toast } from "sonner";
 
 const LeakHunter = () => {
-  const [searchType, setSearchType] = useState('email');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState("email");
+  const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchQuery) {
-      toast.error('Please enter a search query');
+      toast.error("Please enter a search query");
       return;
     }
 
-    if (searchType === 'email') {
+    if (searchType === "email") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(searchQuery)) {
-        toast.error('Please enter a valid email address');
+        toast.error("Please enter a valid email address");
         return;
       }
     }
@@ -28,23 +28,23 @@ const LeakHunter = () => {
     setTimeout(() => {
       const mockResults = [
         {
-          source: 'Have I Been Pwned',
-          date: '2021-06-01',
-          details: 'Email and password leaked.',
+          source: "Have I Been Pwned",
+          date: "2021-06-01",
+          details: "Email and password leaked.",
         },
         {
-          source: 'DeHashed',
-          date: 'N/A',
-          details: 'No breach found.',
+          source: "DeHashed",
+          date: "N/A",
+          details: "No breach found.",
         },
       ];
 
       setResults(mockResults);
 
       if (mockResults.length === 0) {
-        toast('No results found');
+        toast("No results found");
       } else {
-        toast.success('Search successful');
+        toast.success("Search successful");
       }
 
       setIsLoading(false);
@@ -54,34 +54,36 @@ const LeakHunter = () => {
   const handleExportCSV = () => {
     if (results.length === 0) return;
 
-    const csvHeader = 'Source,Date,Details\n';
+    const csvHeader = "Source,Date,Details\n";
     const csvRows = results.map((r) =>
-      [r.source, r.date, `"${r.details}"`].join(',')
+      [r.source, r.date, `"${r.details}"`].join(",")
     );
 
-    const csvContent = csvHeader + csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = csvHeader + csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.setAttribute('download', 'search_results.csv');
+    link.setAttribute("download", "search_results.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    toast.success('Results exported to CSV');
+    toast.success("Results exported to CSV");
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-h-full bg-slate-900">
       <form
         onSubmit={handleSearch}
         className="bg-gray-800 rounded-xl p-6 shadow space-y-6"
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm text-gray-300 mb-1">Search Type</label>
+            <label className="block text-sm text-gray-300 mb-1">
+              Search Type
+            </label>
             <select
               value={searchType}
               onChange={(e) => setSearchType(e.target.value)}
@@ -94,7 +96,9 @@ const LeakHunter = () => {
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm text-gray-300 mb-1">Search Query</label>
+            <label className="block text-sm text-gray-300 mb-1">
+              Search Query
+            </label>
             <div className="flex space-x-2">
               <input
                 type="text"
@@ -108,7 +112,7 @@ const LeakHunter = () => {
                 disabled={isLoading}
                 className="bg-slate-100 hover:bg-slate-200 text-blue-900 px-6 py-2 rounded-lg border border-slate-300"
               >
-                {isLoading ? 'Searching...' : 'Search'}
+                {isLoading ? "Searching..." : "Search"}
               </button>
             </div>
           </div>
@@ -129,7 +133,10 @@ const LeakHunter = () => {
               </thead>
               <tbody>
                 {results.map((r, i) => (
-                  <tr key={i} className="border-b border-gray-700 hover:bg-gray-700">
+                  <tr
+                    key={i}
+                    className="border-b border-gray-700 hover:bg-gray-700"
+                  >
                     <td className="py-2 text-white">{r.source}</td>
                     <td className="py-2 text-white">{r.date}</td>
                     <td className="py-2 text-gray-300">{r.details}</td>
